@@ -12,7 +12,11 @@
 // Diff element for JSON documents. The API here is public so both consumers can
 // reach it.
 
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#else
 import Foundation
+#endif
 
 /// One rendered diff line. ACP-style diffs have no line identity, so `id` is the
 /// ordinal within the computed stream.

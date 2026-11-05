@@ -33,10 +33,10 @@ public struct DiffView: View {
         let result = DiffComputer.compute(oldText: oldText, newText: newText, context: contextLines)
         VStack(alignment: .leading, spacing: 0) {
             if result.exceedsSizeLimit {
-                note("Diff too large to render; showing the new text")
+                note(DiffPresentation.tooLargeNote)
                 fallbackText
             } else if result.isIdentical {
-                note("No changes")
+                note(DiffPresentation.identicalNote)
             } else {
                 hunkRows(result)
             }
@@ -50,7 +50,7 @@ public struct DiffView: View {
 
     @ViewBuilder
     private func hunkRows(_ result: DiffResult) -> some View {
-        let visible = Self.visibleLines(of: result, limit: maxRenderedLines)
+        let visible = DiffPresentation.visibleLines(of: result, limit: maxRenderedLines)
         ForEach(result.hunks.prefix(visible.hunkCount)) { hunk in
             if hunk.skippedBefore > 0 {
                 gap(hunk.skippedBefore)
@@ -61,32 +61,10 @@ public struct DiffView: View {
             }
         }
         if visible.truncatedLineCount > 0 {
-            note("\u{2026} truncated (\(visible.truncatedLineCount) more diff lines)")
+            note(DiffPresentation.truncatedNote(visible.truncatedLineCount.formatted()))
         } else if result.trailingSkippedLines > 0 {
             gap(result.trailingSkippedLines)
         }
-    }
-
-    /// How much of the result fits under `limit` rendered lines: every hunk before
-    /// `hunkCount - 1` renders whole, the last one renders `linesInLastHunk`.
-    /// Internal for tests.
-    static func visibleLines(of result: DiffResult, limit: Int)
-        -> (hunkCount: Int, linesInLastHunk: Int, truncatedLineCount: Int) {
-        var total = 0
-        for hunk in result.hunks {
-            total += hunk.lines.count
-        }
-        guard total > limit else {
-            return (result.hunks.count, result.hunks.last?.lines.count ?? 0, 0)
-        }
-        var remaining = limit
-        for hunk in result.hunks {
-            if hunk.lines.count >= remaining {
-                return (hunk.id + 1, remaining, total - limit)
-            }
-            remaining -= hunk.lines.count
-        }
-        return (result.hunks.count, result.hunks.last?.lines.count ?? 0, 0)   // unreachable
     }
 
     // MARK: - Rows
@@ -95,7 +73,7 @@ public struct DiffView: View {
         HStack(alignment: .top, spacing: 0) {
             number(line.oldNumber)
             number(line.newNumber)
-            Text(marker(line.kind))
+            Text(DiffPresentation.marker(line.kind))
                 .foregroundStyle(.secondary)
                 .frame(width: 14, alignment: .center)
             Text(line.text.isEmpty ? " " : line.text)
@@ -114,7 +92,7 @@ public struct DiffView: View {
     }
 
     private func gap(_ count: Int) -> some View {
-        Text("\u{22EF} \(count) unchanged line\(count == 1 ? "" : "s")")
+        Text(DiffPresentation.gap(count, count.formatted()))
             .font(.caption2)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .center)
@@ -129,23 +107,10 @@ public struct DiffView: View {
     }
 
     private var fallbackText: some View {
-        Text(newText.count > 4000
-             ? newText.prefix(4000) + "\n\u{2026} (truncated)"
-             : newText)
+        Text(DiffPresentation.fallbackText(newText))
             .font(.system(.caption, design: .monospaced))
             .padding(6)
             .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func marker(_ kind: DiffLine.Kind) -> String {
-        switch kind {
-        case .context:
-            return " "
-        case .removed:
-            return "-"
-        case .added:
-            return "+"
-        }
     }
 
     private func color(for kind: DiffLine.Kind) -> Color {

@@ -1,0 +1,4 @@
+module CDiffViewGtk [system] {
+    header "CDiffViewGtk.h"
+    export *
+}

@@ -1,7 +1,7 @@
 // Tests/DiffViewTests/DiffTests.swift
 //
 // Component tests of the standalone DiffView package: the line-diff model (DiffComputer -
-// interleaving, line numbers, context collapsing, degenerate cases) and DiffView's
+// interleaving, line numbers, context collapsing, degenerate cases) and the views'
 // rendering-cap arithmetic. Deliberately free of any host-framework types, matching the
 // component's standalone design.
 
@@ -108,16 +108,29 @@ final class DiffViewTruncationTests: XCTestCase {
     }
 
     func testEverythingFitsUnderTheLimit() {
-        let visible = DiffView.visibleLines(of: makeResult(hunkSizes: [4, 6]), limit: 10)
+        let visible = DiffPresentation.visibleLines(of: makeResult(hunkSizes: [4, 6]), limit: 10)
         XCTAssertEqual(visible.hunkCount, 2)
         XCTAssertEqual(visible.linesInLastHunk, 6)
         XCTAssertEqual(visible.truncatedLineCount, 0)
     }
 
     func testTruncationCutsInsideAHunk() {
-        let visible = DiffView.visibleLines(of: makeResult(hunkSizes: [4, 6, 5]), limit: 7)
+        let visible = DiffPresentation.visibleLines(of: makeResult(hunkSizes: [4, 6, 5]), limit: 7)
         XCTAssertEqual(visible.hunkCount, 2, "the second hunk is the last visible one")
         XCTAssertEqual(visible.linesInLastHunk, 3, "4 whole + 3 of the second = 7")
         XCTAssertEqual(visible.truncatedLineCount, 8, "15 total - 7 rendered")
+    }
+
+    func testTheWordsTakeTheCountAsTheViewWritesIt() {
+        XCTAssertEqual(DiffPresentation.gap(1, "1"), "\u{22EF} 1 unchanged line")
+        XCTAssertEqual(DiffPresentation.gap(1234, "1,234"), "\u{22EF} 1,234 unchanged lines")
+        XCTAssertEqual(DiffPresentation.truncatedNote("1.234"), "\u{2026} truncated (1.234 more diff lines)")
+    }
+
+    func testANegativeLimitRendersNothing() {
+        let visible = DiffPresentation.visibleLines(of: makeResult(hunkSizes: [4, 6]), limit: -3)
+        XCTAssertEqual(visible.hunkCount, 1)
+        XCTAssertEqual(visible.linesInLastHunk, 0, "never negative: the views take prefix(linesInLastHunk)")
+        XCTAssertEqual(visible.truncatedLineCount, 10)
     }
 }
