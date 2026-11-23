@@ -8,6 +8,8 @@ DiffView renders a unified diff of two texts: hunks with old / new line-number g
 
 macOS 14.6+, iOS 17.6+, visionOS 2.6+. Swift 6.
 
+On Linux the module adds a GTK 4 view (`DiffGtkView`). On Windows it is the model and the presentation alone (`DiffModel`, `DiffPresentation`), without a view: ActionUI's Diff add-on draws the rows with WinUI.
+
 ## Usage
 
 ```swift

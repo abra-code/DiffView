@@ -8,6 +8,9 @@
 //
 // On Linux the same DiffView module is built from the model and the text both views show (FoundationEssentials
 // only) plus a GTK 4 view (Gtk/: DiffGtkView). The SwiftUI view is not compiled there.
+//
+// On Windows the module is the model and the text alone: the view is ActionUI's (the ActionUIDiff add-on's WinUI
+// renderer), which draws the rows DiffPresentation describes.
 
 import PackageDescription
 
@@ -26,6 +29,20 @@ let package = Package(
             exclude: ["DiffView.swift"]   // the SwiftUI view
         ),
         .testTarget(name: "DiffViewTests", dependencies: ["DiffView", "CDiffViewGtk"]),
+    ]
+)
+#elseif os(Windows)
+let package = Package(
+    name: "DiffView",
+    products: [
+        .library(name: "DiffView", targets: ["DiffView"]),
+    ],
+    targets: [
+        .target(
+            name: "DiffView",
+            exclude: ["DiffView.swift", "Gtk"]   // the SwiftUI view and the Linux view
+        ),
+        .testTarget(name: "DiffViewTests", dependencies: ["DiffView"], exclude: ["Gtk"]),
     ]
 )
 #else
