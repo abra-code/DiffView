@@ -184,14 +184,34 @@ public enum DiffComputer {
 
     /// Splits into lines, treating a trailing newline as a terminator rather than a
     /// phantom empty last line ("a\n" is ONE line), and an empty text as ZERO lines
-    /// (so an all-new file diffs as pure additions).
-    private static func lines(of text: String) -> [String] {
+    /// (so an all-new file diffs as pure additions). A "\r" before a "\n" belongs to the
+    /// line ending (CRLF, as Windows editors write), not to the line, so texts that
+    /// differ only in their line endings are identical, as `diff --strip-trailing-cr`
+    /// has them.
+    ///
+    /// Split by Unicode scalar: "\r\n" is ONE Character in Swift, so a split by Character
+    /// (FoundationEssentials' components(separatedBy:), on Linux and Windows) never finds
+    /// its "\n" and reads a CRLF file as a single line.
+    static func lines(of text: String) -> [String] {
         guard !text.isEmpty else {
             return []
         }
-        var result = text.components(separatedBy: "\n")
-        if result.last == "" {
-            result.removeLast()
+        var result: [String] = []
+        var line = String.UnicodeScalarView()
+        for scalar in text.unicodeScalars {
+            guard scalar == "\n" else {
+                line.append(scalar)
+                continue
+            }
+            if line.last == "\r" {
+                line.removeLast()
+            }
+            result.append(String(line))
+            line = String.UnicodeScalarView()
+        }
+        // The text after the last "\n": nothing when the text ends with one.
+        if !line.isEmpty {
+            result.append(String(line))
         }
         return result
     }

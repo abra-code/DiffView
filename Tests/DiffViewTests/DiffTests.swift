@@ -21,6 +21,24 @@ final class DiffComputerTests: XCTestCase {
         XCTAssertEqual(result.trailingSkippedLines, 2)
     }
 
+    // CRLF line endings end lines on every platform (a split by Character never finds the
+    // "\n" of a "\r\n", which Swift reads as one Character), and the "\r" is not part of
+    // the line.
+    func testCRLFLineEndings() {
+        XCTAssertEqual(DiffComputer.lines(of: "first\r\nsecond\r\nthird\r\n"), ["first", "second", "third"])
+        XCTAssertEqual(DiffComputer.lines(of: "a\n\nb"), ["a", "", "b"])
+        XCTAssertEqual(DiffComputer.lines(of: "a\r\n\r\n"), ["a", ""])
+        XCTAssertEqual(DiffComputer.lines(of: "a\rb\n"), ["a\rb"], "a lone carriage return is text")
+        XCTAssertEqual(DiffComputer.lines(of: "\n"), [""])
+
+        let changed = DiffComputer.compute(oldText: "first\r\nsecond\r\nthird\r\n",
+                                           newText: "first\r\nsecond, caf\u{e9}\r\nthird\r\n")
+        XCTAssertEqual(kinds(changed), [.context, .removed, .added, .context])
+        XCTAssertEqual(changed.hunks[0].lines.map(\.text), ["first", "second", "second, caf\u{e9}", "third"])
+        XCTAssertTrue(DiffComputer.compute(oldText: "a\r\nb\r\n", newText: "a\nb\n").isIdentical,
+                      "only the line endings differ")
+    }
+
     func testPureAdditionFromEmpty() {
         // An empty old text is ZERO lines, so a new file diffs as pure additions.
         let result = DiffComputer.compute(oldText: "", newText: "one\ntwo\n")
